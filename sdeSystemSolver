@@ -1,0 +1,130 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Solves Coupled Stochastic Differential Equations each of the form dX_t = alpha(X_t, t) dt + sigma(X_t, t) dB_t using the Euler-Maruyama Algorithm
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+#include <random>
+#include <iostream>
+#include <cmath>
+#include <string>
+//#include <iomanip>
+//#include <fstream>
+using namespace std;
+
+// Here are the parameters related to the simulation
+
+#define RANDSEED 17
+const int n = 100; // points to simulate
+double dT = 0.01; // timestep
+
+// Here are the initial conditions for the stochastic differential equation. NumEq is the number of stochastic differential equations, which are presumably coupled. We also defined xValues, which is the array which will be exported at the end of the code containing the solutions to the coupled equations.
+
+const int numEq = 2;
+double xZero[2] = {1.0, 1.0}; 
+double tZero = 0.0; 
+
+double xValues[numEq][n];
+
+// Here we initialize lists corresponding to the coefficient functions below at each time step appearing in the stochastic differential equations.
+
+double alphaZeroValues[n];
+double sigmaZeroValues[n];
+double alphaOneValues[n];
+double sigmaOneValues[n];
+
+// Defines the drift and diffusion coefficients for the first equation. Need to fill in the specific functional form for the stochastic differential equation under consideration. For the one-dimensional linear Kalman-Bucy filter, the functions take the form alphaZero = f(t)X_t[0] and sigmaZero = c(t). Note that there is no dependance on X_t[1].
+
+double alphaZero (int i) {
+double t;
+t = tZero + dT*i;
+return t*xValues[0][i];
+}
+
+double sigmaZero (int i){
+double t;
+t = tZero + dT*i;
+return t;
+}
+
+
+// Defines the drift and diffusion coefficients for the second equation. Need to fill in the specific functional form for the stochastic differential equation under consideration. For the one-dimensional linear Kalman-Bucy filter, the functions take the form alphaOne = g(t)X_t[0] and sigmaOne = d(t).
+
+double alphaOne (int i) {
+double t;
+t= tZero + dT*i;
+return t*xValues[0][i];
+}
+
+double sigmaOne (int i){
+double t;
+t= tZero + dT*i;
+return t;
+}
+
+// Here set up the correlation between the white noise terms appearing in the different equations. For two equations this is just a number.
+
+double corr = 0.2;
+
+// Generates random number from standard normal for use with the white noise term. 
+
+double randn(double min, double max) {
+    static std::mt19937 engine(RANDSEED);
+    static std::normal_distribution<double> normal;
+    using pick = std::normal_distribution<double>::param_type;
+    return normal(engine, pick(min, max));
+}
+
+int main(){
+
+xValues[0][0] = xZero[0];
+xValues[1][0] = xZero[1];
+alphaZeroValues[0] = alphaZero(0);
+alphaOneValues[0] = alphaOne(0);
+sigmaZeroValues[0] = sigmaZero(0);
+sigmaOneValues[0] = sigmaOne(0);
+
+int j;
+
+for(j=1; j<n; j++){
+
+double uncorrNoise[numEq];
+double corrNoise[numEq];
+
+uncorrNoise[0] = randn(0,1);
+uncorrNoise[1] = randn(0,1);
+
+corrNoise[0] = uncorrNoise[0];
+corrNoise[1] = corr*uncorrNoise[0] + sqrt(1-pow(corr,2))*uncorrNoise[1];
+
+double t;
+
+t = tZero + dT*j;
+
+xValues[0][j] = xValues[0][j-1] + alphaZeroValues[j-1]*t + sigmaZeroValues[j-1]*corrNoise[0];
+xValues[1][j] = xValues[1][j-1] + alphaOneValues[j-1]*t + sigmaOneValues[j-1]*corrNoise[1];
+alphaZeroValues[j] = alphaZero(j);
+sigmaZeroValues[j] = sigmaZero(j);
+alphaOneValues[j] = alphaOne(j);
+sigmaOneValues[j] = sigmaOne(j);
+
+}
+
+
+cout << "xZero" << "     " << "xOne \n" ;
+
+int i;
+
+for(i=0; i<n; i++){
+
+cout << xValues[0][i] << "     " << xValues[1][i] << "\n"; 
+
+}
+
+return 0;
+
+}
+
+
+
